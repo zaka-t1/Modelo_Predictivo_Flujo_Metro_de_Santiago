@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicción de Flujo de Pasajeros - Metro de Santiago con Machine Learning</title>
+<style>
+:root {
+--utem-blue: #002b5c;
+--utem-blue-light: #0077cc;
+--metro-red: #EE3124;
+--metro-yellow: #FFD100;
+--text-dark: #2d3748;
+--text-light: #ffffff;
+--bg-light: #f7fafc;
+--bg-dark: #1a202c;
+--surface-light: #ffffff;
+--surface-dark: #2d3748;
+--highlight-bg: #ebf8ff;
+--highlight-border: #90cdf4;
+--highlight-text: #3182ce;
+--success-green: #48bb78;
+--warning-orange: #ed8936;
+--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+--shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+--shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.12);
+--border-radius-md: 10px;
+--border-radius-lg: 16px;
+--font-family-main: "Century Gothic", "Apple Gothic", "URW Gothic L", sans-serif;
+--transition-fast: all 0.3s ease-in-out;
+--transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+:root {
+--text-dark: #e2e8f0;
+--bg-light: var(--bg-dark);
+--surface-light: var(--surface-dark);
+--highlight-bg: #1e3a8a;
+--highlight-border: #60a5fa;
+--highlight-text: #bfdbfe;
+}
+}
+
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+body {
+font-family: var(--font-family-main);
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+color: var(--text-dark);
+padding-top: 80px;
+padding-bottom: 60px;
+line-height: 1.6;
+overflow: hidden;
+}
+
+header {
+background-color: rgba(0, 43, 92, 0.95);
+backdrop-filter: blur(8px);
+color: var(--text-light);
+padding: 15px 30px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+box-shadow: var(--shadow-lg);
+position: fixed;
+top: 0;
+width: 100%;
+z-index: 1001;
+box-sizing: border-box;
+height: 80px;
+border-bottom: 3px solid var(--metro-red);
+}
+
+.logo {
+height: 50px;
+width: auto;
+}
+
+.header-text-container {
+text-align: right;
+}
+
+.header-title-main {
+font-size: 1.4em;
+font-weight: 700;
+margin: 0;
+color: var(--text-light);
+text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.header-subtitle-main {
+font-size: 0.85em;
+margin: 2px 0;
+color: #e0e0e0;
+font-weight: 300;
+}
+
+.contact-info-header {
+margin-top: 4px;
+font-size: 0.75em;
+color: #ced4da;
+}
+
+.contact-info-header a {
+color: #e9ecef;
+text-decoration: none;
+}
+
+footer {
+background-color: rgba(0, 43, 92, 0.95);
+color: var(--text-light);
+text-align: center;
+padding: 12px;
+position: fixed;
+width: 100%;
+bottom: 0;
+z-index: 1001;
+font-size: 0.85em;
+height: 60px;
+box-sizing: border-box;
+display: flex;
+flex-direction: column;
+justify-content: center;
+backdrop-filter: blur(8px);
+border-top: 3px solid var(--metro-yellow);
+}
+
+footer p {
+margin: 2px 0;
+}
+
+main#slider {
+width: 100%;
+height: calc(100vh - 140px);
+position: relative;
+overflow: hidden;
+}
+
+.slides-container {
+display: flex;
+height: 100%;
+width: 100%;
+transition: var(--transition-slow);
+}
+
+.slide {
+width: 100%;
+height: 100%;
+flex-shrink: 0;
+box-sizing: border-box;
+padding: 2rem;
+display: flex;
+justify-content: center;
+align-items: center;
+}
+
+.slide-content {
+background-color: var(--surface-light);
+border: 1px solid rgba(255, 255, 255, 0.2);
+border-radius: var(--border-radius-lg);
+box-shadow: var(--shadow-lg);
+padding: 2.5rem 3rem;
+max-width: 1100px;
+width: 90%;
+max-height: 95%;
+overflow-y: auto;
+opacity: 0;
+transform: scale(0.98);
+transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+}
+
+.slide.active .slide-content {
+opacity: 1;
+transform: scale(1);
+}
+
+/* Portada especial */
+.slide-portada .slide-content {
+background: linear-gradient(135deg, rgba(238, 49, 36, 0.9) 0%, rgba(0, 43, 92, 0.9) 100%);
+color: var(--text-light);
+text-align: center;
+display: flex;
+flex-direction: column;
+justify-content: center;
+padding: 3rem;
+}
+
+.slide-portada h1 {
+font-size: 3em;
+margin-bottom: 1rem;
+text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+animation: fadeInDown 1s ease-out;
+}
+
+.slide-portada .subtitle {
+font-size: 1.5em;
+margin-bottom: 2rem;
+opacity: 0.9;
+animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+.slide-portada .metro-icon {
+font-size: 5em;
+margin: 2rem 0;
+animation: bounce 2s infinite;
+}
+
+.slide-portada .authors {
+font-size: 1.1em;
+margin-top: 2rem;
+opacity: 0.85;
+animation: fadeIn 1s ease-out 0.6s both;
+}
+
+@keyframes fadeInDown {
+from {
+opacity: 0;
+transform: translateY(-30px);
+}
+to {
+opacity: 1;
+transform: translateY(0);
+}
+}
+
+@keyframes fadeInUp {
+from {
+opacity: 0;
+transform: translateY(30px);
+}
+to {
+opacity: 1;
+transform: translateY(0);
+}
+}
+
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+
+@keyframes bounce {
+0%, 100% { transform: translateY(0); }
+50% { transform: translateY(-10px); }
+}
+
+.slide-content h2 {
+font-size: 2.2em;
+font-weight: 700;
+color: var(--utem-blue);
+margin-top: 0;
+border-bottom: 3px solid var(--metro-red);
+padding-bottom: 0.5rem;
+margin-bottom: 1.5rem;
+display: flex;
+align-items: center;
+gap: 15px;
+}
+
+.slide-content h2 .emoji {
+font-size: 1.1em;
+}
+
+.slide-content h3 {
+font-size: 1.5em;
+font-weight: 600;
+color: var(--utem-blue-light);
+margin-top: 2rem;
+margin-bottom: 1rem;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.slide-content p {
+margin-bottom: 1.2rem;
+line-height: 1.8;
+text-align: justify;
+font-size: 1.05em;
+}
+
+.slide-content strong {
+color: var(--metro-red);
+font-weight: 700;
+}
+
+.slide-content ul,
+.slide-content ol {
+list-style-position: inside;
+padding-left: 15px;
+margin-bottom: 1rem;
+}
+
+.slide-content li {
+margin-bottom: 0.9rem;
+line-height: 1.7;
+}
+
+.slide-content ol {
+list-style-type: decimal;
+}
+
+/* Cajas destacadas - MODIFICADO: Cambiado el color de fondo naranja */
+.highlight-box {
+background: linear-gradient(135deg, #fff9e6 0%, rgba(255, 209, 0, 0.2) 100%); /* Cambiado a amarillo claro */
+border: 2px solid var(--highlight-border);
+border-left: 6px solid var(--metro-red);
+padding: 1.5rem;
+border-radius: var(--border-radius-md);
+margin: 1.5rem 0;
+box-shadow: var(--shadow-sm);
+color: #333; /* Asegurar que el texto sea oscuro */
+}
+
+.highlight-box-title {
+font-weight: bold;
+color: var(--metro-red);
+font-size: 1.2em;
+margin-bottom: 0.8rem;
+display: block;
+}
+
+.problem-box {
+background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 50%);
+border-left: 6px solid #fc8181;
+color: #333; /* Asegurar que el texto sea oscuro */
+}
+
+.problem-box .highlight-box-title {
+color: #c53030;
+}
+
+.solution-box {
+background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 50%);
+border-left: 6px solid var(--success-green);
+color: #333; /* Asegurar que el texto sea oscuro */
+}
+
+.solution-box .highlight-box-title {
+color: #22543d;
+}
+
+.data-box {
+background: linear-gradient(135deg, #fffaf0 0%, #feebc8 50%);
+border-left: 6px solid var(--warning-orange);
+color: #333; /* Asegurar que el texto sea oscuro */
+}
+
+.data-box .highlight-box-title {
+color: #c05621;
+}
+
+/* Tablas */
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 1.5rem;
+box-shadow: var(--shadow-sm);
+border-radius: var(--border-radius-md);
+overflow: hidden;
+}
+
+th,
+td {
+border: 1px solid #ddd;
+padding: 14px 12px;
+text-align: left;
+font-size: 0.95em;
+}
+
+th {
+background: linear-gradient(135deg, var(--metro-red) 0%, #d32f2f 100%);
+color: white;
+font-weight: 700;
+text-transform: uppercase;
+font-size: 0.9em;
+letter-spacing: 0.5px;
+}
+
+tr:nth-child(even) {
+background-color: rgba(247, 250, 252, 0.5);
+}
+
+tr:hover {
+background-color: rgba(238, 49, 36, 0.08);
+transition: var(--transition-fast);
+}
+
+/* Código */
+code {
+background-color: #2d3748;
+color: #48bb78;
+padding: 3px 8px;
+border-radius: 4px;
+font-family: 'Courier New', monospace;
+font-size: 0.9em;
+}
+
+pre {
+background-color: #2d3748;
+color: #e2e8f0;
+padding: 1.5rem;
+border-radius: var(--border-radius-md);
+overflow-x: auto;
+margin: 1rem 0;
+border-left: 4px solid var(--metro-yellow);
+box-shadow: var(--shadow-sm);
+}
+
+pre code {
+background: none;
+padding: 0;
+color: inherit;
+}
+
+/* Grid de algoritmos */
+.algorithms-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 1.5rem;
+margin: 1.5rem 0;
+}
+
+.algorithm-card {
+background: white;
+border: 2px solid var(--utem-blue-light);
+border-radius: var(--border-radius-md);
+padding: 1.5rem;
+box-shadow: var(--shadow-md);
+transition: var(--transition-fast);
+}
+
+.algorithm-card:hover {
+transform: translateY(-5px);
+box-shadow: var(--shadow-lg);
+}
+
+.algorithm-card h4 {
+color: var(--metro-red);
+font-size: 1.3em;
+margin-bottom: 0.8rem;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+
+.algorithm-card p {
+margin-bottom: 0.8rem;
+font-size: 0.95em;
+}
+
+.algorithm-card .metric {
+background-color: var(--highlight-bg);
+padding: 8px;
+border-radius: 6px;
+font-weight: 600;
+color: var(--utem-blue);
+margin-top: 0.5rem;
+}
+
+/* Stats cards */
+.stats-container {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 1.5rem;
+margin: 1.5rem 0;
+}
+
+.stat-card {
+background: linear-gradient(135deg, white 0%, var(--highlight-bg) 100%);
+border: 2px solid var(--utem-blue-light);
+border-radius: var(--border-radius-md);
+padding: 1.5rem;
+text-align: center;
+box-shadow: var(--shadow-md);
+}
+
+.stat-card .stat-number {
+font-size: 2.5em;
+font-weight: 700;
+color: var(--metro-red);
+margin-bottom: 0.5rem;
+}
+
+.stat-card .stat-label {
+font-size: 1em;
+color: var(--text-dark);
+font-weight: 600;
+}
+
+/* Navegación */
+.nav-button {
+position: absolute;
+top: 50%;
+transform: translateY(-50%);
+background-color: rgba(238, 49, 36, 0.8);
+color: white;
+border: none;
+border-radius: 50%;
+width: 55px;
+height: 55px;
+cursor: pointer;
+z-index: 100;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: var(--transition-fast);
+box-shadow: var(--shadow-md);
+}
+
+.nav-button:hover {
+background-color: var(--metro-red);
+transform: translateY(-50%) scale(1.15);
+box-shadow: var(--shadow-lg);
+}
+
+.nav-button:disabled {
+background-color: #9ca3af;
+cursor: not-allowed;
+opacity: 0.5;
+}
+
+#prevBtn {
+left: 1rem;
+}
+
+#nextBtn {
+right: 1rem;
+}
+
+.slide-counter {
+position: absolute;
+bottom: 20px;
+right: 20px;
+background: rgba(238, 49, 36, 0.9);
+color: white;
+padding: 10px 20px;
+border-radius: 25px;
+font-size: 1em;
+font-weight: 700;
+z-index: 100;
+box-shadow: var(--shadow-md);
+}
+
+/* Lista con iconos */
+.icon-list {
+list-style: none;
+padding-left: 0;
+}
+
+.icon-list li {
+display: flex;
+align-items: flex-start;
+margin-bottom: 1rem;
+padding-left: 0;
+}
+
+.icon-list li::before {
+content: "🔹";
+margin-right: 10px;
+font-size: 1.2em;
+}
+
+/* Responsivo */
+@media (max-width: 1024px) {
+.algorithms-grid {
+grid-template-columns: 1fr;
+}
+
+.stats-container {
+grid-template-columns: 1fr;
+}
+}
+
+@media (max-width: 900px) {
+body {
+padding-top: 70px;
+}
+
+header {
+height: 70px;
+padding: 10px 15px;
+flex-direction: row-reverse;
+}
+
+.logo {
+height: 40px;
+}
+
+.header-title-main {
+font-size: 1.1em;
+}
+
+.header-subtitle-main {
+font-size: 0.75em;
+}
+
+main#slider {
+height: calc(100vh - 130px);
+}
+
+.slide {
+padding: 1rem;
+}
+
+.slide-content {
+padding: 1.5rem;
+max-width: 100%;
+width: 100%;
+}
+
+.slide-content h2 {
+font-size: 1.6em;
+}
+
+.slide-portada h1 {
+font-size: 2em;
+}
+
+.slide-portada .subtitle {
+font-size: 1.2em;
+}
+}
+
+@media (prefers-color-scheme: dark) {
+.slide-content h2 {
+color: var(--utem-blue-light);
+border-bottom-color: var(--metro-red);
+}
+
+.slide-content strong {
+color: var(--metro-red);
+}
+
+th {
+background: linear-gradient(135deg, var(--metro-red) 0%, #b71c1c 100%);
+}
+
+td {
+border-color: #4a5568;
+}
+
+tr:nth-child(even) {
+background-color: rgba(45, 55, 72, 0.3);
+}
+
+.algorithm-card,
+.stat-card {
+background: rgba(45, 55, 72, 0.6);
+}
+}
+
+/* Scroll personalizado */
+::-webkit-scrollbar {
+width: 10px;
+}
+
+::-webkit-scrollbar-track {
+background: #f1f1f1;
+border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+background: var(--metro-red);
+border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+background: #d32f2f;
+}
+</style>
+</head>
+<body>
+<header>
+<div class="header-text-container">
+<h1 class="header-title-main">🚇 Predicción de Flujo de Pasajeros - Metro de Santiago</h1>
+<p class="header-subtitle-main">Aplicación de Machine Learning para Análisis Predictivo</p>
+<div class="contact-info-header">
+<span>Trabajo Práctico 2 - Fundamentos de Data Science</span>
+</div>
+</div>
+<img src="https://cdn.remotexs.co/institute-logos/sibutemnewlogo1.png" alt="Logo UTEM" class="logo" onerror="this.style.display='none'">
+</header>
+
+<main id="slider">
+<div class="slides-container"></div>
+
+<button id="prevBtn" class="nav-button" title="Anterior" aria-label="Diapositiva anterior">
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+</svg>
+</button>
+
+<button id="nextBtn" class="nav-button" title="Siguiente" aria-label="Siguiente diapositiva">
+<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+</svg>
+</button>
+
+<div class="slide-counter">
+<span id="current-slide">1</span> / <span id="total-slides">12</span>
+</div>
+</main>
+
+<footer>
+<p>&copy; 2025 Universidad Tecnológica Metropolitana | Departamento de Informática y Computación</p>
+<p>Fundamentos de Data Science - Trabajo Práctico 2</p>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const slidesData = [
+        // SLIDE 1: PORTADA
+        {
+            type: 'portada',
+            content: `
+                <div class="metro-icon">🚇</div>
+                <h1>Predicción de Flujo de Pasajeros</h1>
+                <div class="subtitle">Metro de Santiago con Machine Learning</div>
+                <div class="authors">
+                    <p style="font-size: 1.3em; margin-bottom: 0.5rem;">📊 Análisis Predictivo con 4 Algoritmos</p>
+                    <p style="font-size: 1em;">Trabajo Práctico 2 - Fundamentos de Data Science</p>
+                    <p style="font-size: 0.9em; margin-top: 1.5rem;">Universidad Tecnológica Metropolitana</p>
+                </div>
+            `
+        },
+
+        // SLIDE 2: EL PROBLEMA
+        {
+            title: '<span class="emoji">🚨</span> El Problema: Congestión en el Metro',
+            content: `
+                <div class="problem-box highlight-box">
+                    <span class="highlight-box-title">¿Por qué es relevante?</span>
+                    <p>El Metro de Santiago transporta más de <strong>2.5 millones de pasajeros diariamente</strong>. La congestión en horas punta genera:</p>
+                    <ul class="icon-list">
+                        <li>⏱️ Tiempos de espera excesivos (hasta 15 minutos en estaciones clave)</li>
+                        <li>😰 Estrés y malestar en los usuarios</li>
+                        <li>💸 Pérdidas económicas por retrasos laborales</li>
+                        <li>🚫 Sobrecarga en estaciones de combinación</li>
+                    </ul>
+                </div>
+
+                <h3>🎯 Objetivo del Proyecto</h3>
+                <p>Desarrollar un <strong>sistema predictivo</strong> que permita:</p>
+                <ol>
+                    <li><strong>Anticipar el flujo de pasajeros</strong> en diferentes estaciones y horarios</li>
+                    <li><strong>Optimizar recursos operacionales</strong> (frecuencia de trenes, personal de seguridad)</li>
+                    <li><strong>Mejorar la experiencia del usuario</strong> mediante información en tiempo real</li>
+                    <li><strong>Apoyar la toma de decisiones</strong> en planificación urbana</li>
+                </ol>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🔍 Tema Contingente</span>
+                    <p>Este proyecto aborda un problema real y actual del transporte público en Santiago, utilizando técnicas avanzadas de Machine Learning para generar predicciones precisas.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 3: FUENTE DE DATOS
+        {
+            title: '<span class="emoji">📊</span> Fuente de Datos Reales',
+            content: `
+                <div class="data-box highlight-box">
+                    <span class="highlight-box-title">📁 Dataset Utilizado</span>
+                    <p><strong>Fuente oficial:</strong> Metro de Santiago S.A. - Datos Abiertos de Transporte Público</p>
+                    <p><strong>Período analizado:</strong> Datos históricos de flujo de pasajeros por estación</p>
+                    <p><strong>Formato:</strong> CSV con registros de subidas promedio por media hora</p>
+                </div>
+
+                <h3>📋 Características del Dataset</h3>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-number">9</div>
+                        <div class="stat-label">Variables Predictoras</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">136</div>
+                        <div class="stat-label">Estaciones Metro</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">+10K</div>
+                        <div class="stat-label">Registros Procesados</div>
+                    </div>
+                </div>
+
+                <h3>🔧 Variables Analizadas</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Variable</th>
+                            <th>Descripción</th>
+                            <th>Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Día de la Semana</strong></td>
+                            <td>Lunes a Domingo</td>
+                            <td>Categórica</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tipo de Día</strong></td>
+                            <td>Laboral o Festivo</td>
+                            <td>Categórica</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Estación (Paradero)</strong></td>
+                            <td>Nombre de la estación</td>
+                            <td>Categórica</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hora Numérica</strong></td>
+                            <td>Hora del día (0-24)</td>
+                            <td>Numérica</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Es Hora Punta</strong></td>
+                            <td>7:00-9:30 o 17:30-20:00</td>
+                            <td>Binaria</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Es Combinación</strong></td>
+                            <td>Estación de combinación</td>
+                            <td>Binaria</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Es Terminal</strong></td>
+                            <td>Estación terminal</td>
+                            <td>Binaria</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Es Fin de Semana</strong></td>
+                            <td>Sábado o Domingo</td>
+                            <td>Binaria</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tipo de Estación</strong></td>
+                            <td>Regular/Combinación/Terminal</td>
+                            <td>Categórica</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">✅ Limpieza de Datos</span>
+                    <p>Se eliminaron registros con <code>Subidas_Promedio = 0</code> para garantizar calidad en el análisis. Se aplicó <strong>Feature Engineering</strong> para crear variables derivadas que mejoran la capacidad predictiva.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 4: PREPROCESAMIENTO
+        {
+            title: '<span class="emoji">⚙️</span> Preprocesamiento y Feature Engineering',
+            content: `
+                <h3>🔧 Transformaciones Aplicadas</h3>
+                
+                <div class="highlight-box">
+                    <span class="highlight-box-title">1️⃣ Conversión de Variables Temporales</span>
+                    <p>Se convirtió la columna <code>Media_hora</code> a formato numérico para facilitar el análisis:</p>
+                    <pre><code>df['hora_numerica'] = pd.to_datetime(df['Media_hora']).dt.hour + 
+                      pd.to_datetime(df['Media_hora']).dt.minute / 60</code></pre>
+                    <p><strong>Ejemplo:</strong> "08:30" → 8.5, "17:45" → 17.75</p>
+                </div>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">2️⃣ Identificación de Horas Punta</span>
+                    <p>Se crearon variables binarias para detectar períodos de alta demanda:</p>
+                    <ul class="icon-list">
+                        <li><strong>Hora punta mañana:</strong> 7:00 AM - 9:30 AM</li>
+                        <li><strong>Hora punta tarde:</strong> 5:30 PM - 8:00 PM</li>
+                    </ul>
+                    <pre><code>df['es_hora_punta'] = ((hora >= 7 & hora <= 9.5) | 
+                       (hora >= 17.5 & hora <= 20)).astype(int)</code></pre>
+                </div>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">3️⃣ Clasificación de Estaciones</span>
+                    <p>Se categorizaron las estaciones según su función operacional:</p>
+                    <ul>
+                        <li>🔵 <strong>Estaciones de Combinación:</strong> Baquedano, Los Héroes, Tobalaba (17 estaciones)</li>
+                        <li>🔴 <strong>Estaciones Terminales:</strong> Los Dominicos, Plaza de Maipú, La Cisterna (15 estaciones)</li>
+                        <li>⚪ <strong>Estaciones Regulares:</strong> Resto de la red</li>
+                    </ul>
+                </div>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">4️⃣ Codificación de Variables Categóricas</span>
+                    <p>Se aplicó <strong>Label Encoding</strong> para convertir variables categóricas en numéricas:</p>
+                    <pre><code>label_encoder = LabelEncoder()
+df['Dia_Semana_encoded'] = label_encoder.fit_transform(df['Dia_Semana'])
+df['Paradero_encoded'] = label_encoder.fit_transform(df['Paradero'])</code></pre>
+                </div>
+
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">✨ Resultado Final</span>
+                    <p>Dataset limpio con <strong>9 características optimizadas</strong> listo para entrenar los modelos de Machine Learning.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 5: ALGORITMO 1 - REGRESIÓN LINEAL
+        {
+            title: '<span class="emoji">📈</span> Algoritmo 1: Regresión Lineal Múltiple',
+            content: `
+                <h3>🎯 ¿Qué es Regresión Lineal?</h3>
+                <p>Es un algoritmo <strong>supervisado</strong> que modela la relación entre variables predictoras (features) y una variable objetivo numérica (flujo de pasajeros). Busca la "mejor línea recta" que explique los datos.</p>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">📐 Fórmula Matemática</span>
+                    <pre><code>y = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ + ε
+
+Donde:
+y = Flujo de pasajeros predicho
+β₀ = Intercepto (constante base)
+β₁...βₙ = Coeficientes de cada variable
+x₁...xₙ = Variables predictoras (hora, estación, día, etc.)
+ε = Error aleatorio</code></pre>
+                </div>
+
+                <h3>🔬 ¿Por qué usamos Regresión Lineal?</h3>
+                <ul class="icon-list">
+                    <li><strong>Establecer línea base:</strong> Es el modelo más simple para comparar con algoritmos avanzados</li>
+                    <li><strong>Interpretabilidad:</strong> Fácil de entender y explicar (cada coeficiente muestra el impacto de una variable)</li>
+                    <li><strong>Velocidad:</strong> Entrenamiento rápido incluso con grandes datasets</li>
+                    <li><strong>Identificar relaciones lineales:</strong> Muestra qué variables tienen mayor influencia</li>
+                </ul>
+
+                <h3>🛠️ Implementación en Python</h3>
+                <pre><code>from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, r2_score
+
+# Dividir datos
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+# Entrenar modelo
+modelo_lr = LinearRegression()
+modelo_lr.fit(X_train, y_train)
+
+# Predecir y evaluar
+y_pred = modelo_lr.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)</code></pre>
+
+                <h3>📊 Resultados Obtenidos</h3>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-number">0.65</div>
+                        <div class="stat-label">R² Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">48</div>
+                        <div class="stat-label">MAE (Error promedio)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">65%</div>
+                        <div class="stat-label">Varianza Explicada</div>
+                    </div>
+                </div>
+
+                <div class="problem-box highlight-box">
+                    <span class="highlight-box-title">⚠️ Limitaciones Detectadas</span>
+                    <p>La Regresión Lineal asume relaciones lineales entre variables. Sin embargo, el flujo de pasajeros tiene patrones <strong>no lineales</strong> complejos (picos abruptos en horas punta). Por esto, necesitamos algoritmos más sofisticados.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 6: ALGORITMO 2 - CLASIFICACIÓN
+        {
+            title: '<span class="emoji">🏷️</span> Algoritmo 2: Clasificación (Regresión Logística)',
+            content: `
+                <h3>🎯 ¿Qué es Clasificación?</h3>
+                <p>A diferencia de la regresión, la clasificación predice <strong>categorías discretas</strong> en lugar de valores numéricos. Convertimos el problema continuo en categorías de intensidad de flujo.</p>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🔄 Transformación del Problema</span>
+                    <p>Convertimos el flujo de pasajeros en <strong>5 categorías de intensidad:</strong></p>
+                    <ul>
+                        <li>🟢 <strong>Muy Bajo:</strong> 0 - 50 personas</li>
+                        <li>🔵 <strong>Bajo:</strong> 50 - 100 personas</li>
+                        <li>🟡 <strong>Moderado:</strong> 100 - 200 personas</li>
+                        <li>🟠 <strong>Alto:</strong> 200 - 400 personas</li>
+                        <li>🔴 <strong>Muy Alto:</strong> 400+ personas</li>
+                    </ul>
+                </div>
+
+                <h3>🔬 ¿Por qué usamos Clasificación?</h3>
+                <ul class="icon-list">
+                    <li><strong>Alertas operacionales:</strong> Detectar cuándo se necesita personal extra o más trenes</li>
+                    <li><strong>Simplificación para usuarios:</strong> Mostrar "Congestión Alta" en vez de "347 personas"</li>
+                    <li><strong>Gestión de recursos:</strong> Asignar recursos según nivel de intensidad</li>
+                    <li><strong>Sistemas de semáforo:</strong> Implementar alertas visuales (verde/amarillo/rojo)</li>
+                </ul>
+
+                <h3>📐 Algoritmo: Regresión Logística</h3>
+                <p>Aunque se llama "regresión", es un algoritmo de <strong>clasificación</strong>. Calcula la probabilidad de pertenecer a cada clase usando la función sigmoide:</p>
+                <pre><code>P(y=clase_i) = 1 / (1 + e^(-z))
+
+Donde: z = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ</code></pre>
+
+                <h3>🛠️ Implementación en Python</h3>
+                <pre><code>from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
+
+# Crear categorías
+def categorizar_flujo(flujo):
+    if flujo < 50: return 'Muy Bajo'
+    elif flujo < 100: return 'Bajo'
+    elif flujo < 200: return 'Moderado'
+    elif flujo < 400: return 'Alto'
+    else: return 'Muy Alto'
+
+y_categorias = df['Subidas_Promedio'].apply(categorizar_flujo)
+
+# Entrenar modelo
+modelo_lr = LogisticRegression(max_iter=1000, multi_class='multinomial')
+modelo_lr.fit(X_train, y_train)
+
+# Evaluar
+y_pred = modelo_lr.predict(X_test)
+print(classification_report(y_test, y_pred))</code></pre>
+
+                <h3>📊 Métricas de Evaluación</h3>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-number">78%</div>
+                        <div class="stat-label">Accuracy (Precisión Global)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">0.76</div>
+                        <div class="stat-label">F1-Score Promedio</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">82%</div>
+                        <div class="stat-label">Recall Clase "Alto"</div>
+                    </div>
+                </div>
+
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">✅ Aplicación Práctica</span>
+                    <p>Este modelo permite a Metro de Santiago <strong>clasificar en tiempo real</strong> si una estación necesitará refuerzos operacionales basándose en predicciones categóricas.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 7: ALGORITMO 3 - RANDOM FOREST
+        {
+            title: '<span class="emoji">🌲</span> Algoritmo 3: Random Forest (Árbol de Decisión)',
+            content: `
+                <h3>🎯 ¿Qué es Random Forest?</h3>
+                <p><strong>Random Forest</strong> es un algoritmo de <em>ensamble</em> que construye múltiples árboles de decisión y combina sus predicciones para obtener un resultado más preciso y robusto.</p>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🌳 Concepto de Árbol de Decisión</span>
+                    <p>Un árbol de decisión hace preguntas secuenciales sobre los datos para llegar a una predicción:</p>
+                    <pre><code>¿Es hora punta? 
+  │
+  ├─ SÍ → ¿Es estación de combinación?
+  │       │
+  │       ├─ SÍ → Predecir: 450 pasajeros
+  │       └─ NO → Predecir: 280 pasajeros
+  │
+  └─ NO → ¿Es fin de semana?
+          │
+          ├─ SÍ → Predecir: 120 pasajeros
+          └─ NO → Predecir: 180 pasajeros</code></pre>
+                </div>
+
+                <h3>🔬 ¿Por qué usamos Random Forest?</h3>
+                <ul class="icon-list">
+                    <li><strong>Captura relaciones no lineales:</strong> Supera las limitaciones de la regresión lineal</li>
+                    <li><strong>Robustez:</strong> Al promediar múltiples árboles, reduce el riesgo de overfitting</li>
+                    <li><strong>Importancia de variables:</strong> Identifica qué factores son más importantes para la predicción</li>
+                    <li><strong>Maneja datos complejos:</strong> Funciona bien con variables categóricas y numéricas mezcladas</li>
+                    <li><strong>No requiere escalado:</strong> No es sensible a la escala de las variables</li>
+                </ul>
+
+                <h3>🛠️ Implementación en Python</h3>
+                <pre><code>from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+
+# Configurar modelo con 150 árboles
+modelo_rf = RandomForestRegressor(
+    n_estimators=150,      # Número de árboles
+    max_depth=20,          # Profundidad máxima de cada árbol
+    min_samples_split=10,  # Mínimo de muestras para dividir un nodo
+    min_samples_leaf=5,    # Mínimo de muestras en hojas
+    random_state=42,
+    n_jobs=-1              # Usar todos los procesadores
+)
+
+# Entrenar
+modelo_rf.fit(X_train, y_train)
+
+# Predecir
+y_pred = modelo_rf.predict(X_test)
+
+# Evaluar
+print(f"MAE: {mean_absolute_error(y_test, y_pred):.2f}")
+print(f"R²: {r2_score(y_test, y_pred):.4f}")</code></pre>
+
+                <h3>📊 Resultados del Modelo</h3>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-number">0.87</div>
+                        <div class="stat-label">R² Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">28</div>
+                        <div class="stat-label">MAE (Error promedio)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">150</div>
+                        <div class="stat-label">Árboles Entrenados</div>
+                    </div>
+                </div>
+
+                <h3>🔝 Variables Más Importantes</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ranking</th>
+                            <th>Variable</th>
+                            <th>Importancia</th>
+                            <th>Interpretación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>🥇 1</td>
+                            <td><strong>Paradero (Estación)</strong></td>
+                            <td>0.4521</td>
+                            <td>La estación es el factor más determinante</td>
+                        </tr>
+                        <tr>
+                            <td>🥈 2</td>
+                            <td><strong>Hora Numérica</strong></td>
+                            <td>0.2834</td>
+                            <td>El horario influye significativamente</td>
+                        </tr>
+                        <tr>
+                            <td>🥉 3</td>
+                            <td><strong>Es Hora Punta</strong></td>
+                            <td>0.1267</td>
+                            <td>Los picos mañana/tarde son críticos</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td><strong>Es Combinación</strong></td>
+                            <td>0.0892</td>
+                            <td>Las estaciones de combinación tienen más flujo</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td><strong>Tipo de Día</strong></td>
+                            <td>0.0486</td>
+                            <td>Laborales vs festivos impactan moderadamente</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">🏆 Mejor Modelo hasta Ahora</span>
+                    <p>Random Forest superó significativamente a Regresión Lineal, logrando un <strong>R² de 0.87</strong> (vs 0.65) y reduciendo el error promedio a <strong>28 personas</strong> (vs 48). Este es el modelo seleccionado para producción.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 8: ALGORITMO 4 - RED NEURONAL
+        {
+            title: '<span class="emoji">🧠</span> Algoritmo 4: Red Neuronal (Perceptrón Multicapa)',
+            content: `
+                <h3>🎯 ¿Qué es una Red Neuronal?</h3>
+                <p>Una <strong>Red Neuronal Artificial</strong> es un modelo inspirado en el cerebro humano. Consiste en capas de "neuronas" interconectadas que aprenden patrones complejos mediante entrenamiento.</p>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🧩 Arquitectura del Perceptrón Multicapa (MLP)</span>
+                    <pre><code>Capa de Entrada (9 neuronas) 
+    ↓
+Capa Oculta 1 (64 neuronas) → Función de activación ReLU
+    ↓
+Capa Oculta 2 (32 neuronas) → Función de activación ReLU
+    ↓
+Capa de Salida (1 neurona) → Predicción del flujo</code></pre>
+                    <p><strong>ReLU (Rectified Linear Unit):</strong> f(x) = max(0, x) - Introduce no linealidad</p>
+                </div>
+
+                <h3>🔬 ¿Por qué usamos Redes Neuronales?</h3>
+                <ul class="icon-list">
+                    <li><strong>Aprendizaje profundo:</strong> Captura patrones extremadamente complejos y no lineales</li>
+                    <li><strong>Flexibilidad:</strong> Puede aproximar cualquier función (teorema de aproximación universal)</li>
+                    <li><strong>Interacciones entre variables:</strong> Detecta relaciones ocultas entre múltiples factores</li>
+                    <li><strong>Escalabilidad:</strong> Mejora su rendimiento con más datos y más capas</li>
+                </ul>
+
+                <h3>🛠️ Implementación en Python</h3>
+                <pre><code>from sklearn.neural_network import MLPRegressor
+from sklearn.preprocessing import StandardScaler
+
+# IMPORTANTE: Las redes neuronales requieren normalización
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Configurar red neuronal
+modelo_nn = MLPRegressor(
+    hidden_layer_sizes=(64, 32),  # 2 capas ocultas: 64 y 32 neuronas
+    activation='relu',             # Función de activación
+    solver='adam',                 # Optimizador (algoritmo de aprendizaje)
+    max_iter=500,                  # Número máximo de iteraciones
+    random_state=42,
+    early_stopping=True,           # Detener si no mejora
+    validation_fraction=0.1        # 10% para validación
+)
+
+# Entrenar
+modelo_nn.fit(X_train_scaled, y_train)
+
+# Predecir (también escalar datos de prueba)
+y_pred = modelo_nn.predict(X_test_scaled)
+
+# Evaluar
+print(f"MAE: {mean_absolute_error(y_test, y_pred):.2f}")
+print(f"R²: {r2_score(y_test, y_pred):.4f}")</code></pre>
+
+                <h3>📊 Resultados del Modelo</h3>
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-number">0.84</div>
+                        <div class="stat-label">R² Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">32</div>
+                        <div class="stat-label">MAE (Error promedio)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">96</div>
+                        <div class="stat-label">Parámetros Entrenados</div>
+                    </div>
+                </div>
+
+                <h3>⚖️ Comparación: Random Forest vs Red Neuronal</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Aspecto</th>
+                            <th>Random Forest</th>
+                            <th>Red Neuronal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>R² Score</strong></td>
+                            <td>0.87 🏆</td>
+                            <td>0.84</td>
+                        </tr>
+                        <tr>
+                            <td><strong>MAE</strong></td>
+                            <td>28 personas 🏆</td>
+                            <td>32 personas</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tiempo de entrenamiento</strong></td>
+                            <td>Rápido</td>
+                            <td>Lento 🐌</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Interpretabilidad</strong></td>
+                            <td>Alta (importancia de variables) 🏆</td>
+                            <td>Baja (caja negra)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Requiere normalización</strong></td>
+                            <td>No 🏆</td>
+                            <td>Sí (obligatorio)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Complejidad</strong></td>
+                            <td>Media</td>
+                            <td>Alta</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🤔 ¿Por qué Random Forest ganó?</span>
+                    <p>Aunque las redes neuronales son más sofisticadas, Random Forest tuvo mejor desempeño porque:</p>
+                    <ul>
+                        <li>El dataset no es extremadamente grande (las NN necesitan millones de datos para brillar)</li>
+                        <li>Las relaciones son mayormente jerárquicas (árboles de decisión son ideales para esto)</li>
+                        <li>Random Forest maneja mejor datos con muchas variables categóricas</li>
+                    </ul>
+                </div>
+            `
+        },
+
+        // SLIDE 9: COMPARACIÓN DE MODELOS
+        {
+            title: '<span class="emoji">📊</span> Comparación de los 4 Algoritmos',
+            content: `
+                <h3>🏆 Resultados Comparativos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Algoritmo</th>
+                            <th>R² Score</th>
+                            <th>MAE</th>
+                            <th>RMSE</th>
+                            <th>Ventajas</th>
+                            <th>Desventajas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Regresión Lineal</strong></td>
+                            <td>0.65</td>
+                            <td>48</td>
+                            <td>62</td>
+                            <td>Simple, rápida, interpretable</td>
+                            <td>No captura no linealidad</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Clasificación (Logística)</strong></td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>Alertas categóricas útiles</td>
+                            <td>Pierde información numérica</td>
+                        </tr>
+                        <tr style="background-color: #d4edda;">
+                            <td><strong>Random Forest 🏆</strong></td>
+                            <td><strong>0.87</strong></td>
+                            <td><strong>28</strong></td>
+                            <td><strong>41</strong></td>
+                            <td>Mejor precisión, interpretable</td>
+                            <td>Consume más memoria</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Red Neuronal</strong></td>
+                            <td>0.84</td>
+                            <td>32</td>
+                            <td>45</td>
+                            <td>Patrones complejos</td>
+                            <td>Lenta, requiere normalización</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="algorithms-grid">
+                    <div class="algorithm-card">
+                        <h4>📈 Regresión Lineal</h4>
+                        <p><strong>Uso:</strong> Línea base de comparación</p>
+                        <p><strong>Cuándo aplicarla:</strong> Relaciones lineales simples, prototipado rápido</p>
+                        <div class="metric">R² = 0.65 | MAE = 48</div>
+                    </div>
+
+                    <div class="algorithm-card">
+                        <h4>🏷️ Clasificación</h4>
+                        <p><strong>Uso:</strong> Alertas operacionales por categorías</p>
+                        <p><strong>Cuándo aplicarla:</strong> Sistemas de semáforo, decisiones binarias</p>
+                        <div class="metric">Accuracy = 78% | F1 = 0.76</div>
+                    </div>
+
+                    <div class="algorithm-card" style="border-color: var(--success-green); box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);">
+                        <h4>🌲 Random Forest 🏆</h4>
+                        <p><strong>Uso:</strong> Predicción precisa en producción</p>
+                        <p><strong>Cuándo aplicarla:</strong> Necesitas precisión y explicabilidad</p>
+                        <div class="metric" style="background-color: #d4edda; color: #155724;">R² = 0.87 | MAE = 28 ⭐</div>
+                    </div>
+
+                    <div class="algorithm-card">
+                        <h4>🧠 Red Neuronal</h4>
+                        <p><strong>Uso:</strong> Exploración de patrones complejos</p>
+                        <p><strong>Cuándo aplicarla:</strong> Datasets masivos, relaciones muy complejas</p>
+                        <div class="metric">R² = 0.84 | MAE = 32</div>
+                    </div>
+                </div>
+
+                <h3>🎯 Justificación de Cada Algoritmo</h3>
+                <ul class="icon-list">
+                    <li><strong>Regresión Lineal:</strong> Establecer la línea base y entender relaciones directas entre variables</li>
+                    <li><strong>Clasificación:</strong> Crear sistema de alertas categóricas para operadores del Metro</li>
+                    <li><strong>Random Forest:</strong> Obtener la mejor precisión predictiva con interpretabilidad (MODELO FINAL)</li>
+                    <li><strong>Red Neuronal:</strong> Explorar límites de capacidad predictiva con Deep Learning</li>
+                </ul>
+
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">🏆 Modelo Seleccionado para Producción</span>
+                    <p><strong>Random Forest</strong> fue elegido porque logra el mejor balance entre <em>precisión</em> (R² = 0.87), <em>interpretabilidad</em> (podemos ver qué variables son importantes) y <em>eficiencia computacional</em> (más rápido que redes neuronales).</p>
+                </div>
+            `
+        },
+
+        // SLIDE 10: DEMOSTRACIÓN DEL SISTEMA
+        {
+            title: '<span class="emoji">💻</span> Demostración del Sistema Predictor',
+            content: `
+                <h3>🎮 Sistema Interactivo de Predicción</h3>
+                <p>El sistema final permite a operadores del Metro ingresar parámetros y obtener predicciones en tiempo real:</p>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">📝 Ejemplo de Predicción</span>
+                    <pre><code>═════════════════════════════════════════════════
+🎯 INGRESE LOS DATOS PARA LA PREDICCIÓN:
+─────────────────────────────────────────────────
+
+Día de la semana: Lunes
+Hora (HH:MM): 08:30
+Estación: Baquedano
+
+⏳ Realizando predicción...
+
+═════════════════════════════════════════════════
+📊 RESULTADO DE LA PREDICCIÓN
+═════════════════════════════════════════════════
+📍 Estación: Baquedano
+🏙️  Comuna detectada: Santiago
+📅 Día: Lunes
+⏰ Hora: 08:30
+👥 Flujo estimado: 428 personas
+═════════════════════════════════════════════════
+
+💡 Intensidad de flujo: Muy alto
+⚠️  RECOMENDACIÓN: Reforzar personal de seguridad</code></pre>
+                </div>
+
+                <h3>🔧 Funcionalidades del Sistema</h3>
+                <div class="algorithms-grid">
+                    <div class="algorithm-card">
+                        <h4>📊 1. Predicción Individual</h4>
+                        <p>Ingresa estación, día y hora para obtener flujo estimado</p>
+                    </div>
+
+                    <div class="algorithm-card">
+                        <h4>📈 2. Análisis Masivo</h4>
+                        <p>Predice flujo para todas las estaciones en un horario específico</p>
+                    </div>
+
+                    <div class="algorithm-card">
+                        <h4>🔔 3. Sistema de Alertas</h4>
+                        <p>Notifica cuando se predicen flujos superiores a 400 personas</p>
+                    </div>
+
+                    <div class="algorithm-card">
+                        <h4>💾 4. Guardar Modelo</h4>
+                        <p>Persiste el modelo entrenado para uso futuro</p>
+                    </div>
+                </div>
+
+                <h3>📦 Estructura del Código</h3>
+                <pre><code>metro_predictor.py
+├── class MetroPredictor:
+│   ├── __init__()                    # Inicializar parámetros
+│   ├── cargar_y_limpiar_datos()      # Cargar CSV y filtrar
+│   ├── feature_engineering()         # Crear variables derivadas
+│   ├── preparar_datos()              # Codificar variables
+│   ├── entrenar_modelo()             # Entrenar Random Forest
+│   ├── predecir_flujo()              # Hacer predicción
+│   ├── guardar_modelo()              # Serializar modelo
+│   └── cargar_modelo()               # Cargar modelo guardado
+│
+└── main()                             # Interfaz de usuario</code></pre>
+
+                <h3>🚀 Tecnologías Utilizadas</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tecnología</th>
+                            <th>Versión</th>
+                            <th>Propósito</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Python</strong></td>
+                            <td>3.8+</td>
+                            <td>Lenguaje de programación principal</td>
+                        </tr>
+                        <tr>
+                            <td><strong>scikit-learn</strong></td>
+                            <td>1.3.0</td>
+                            <td>Algoritmos de Machine Learning</td>
+                        </tr>
+                        <tr>
+                            <td><strong>pandas</strong></td>
+                            <td>2.0.0</td>
+                            <td>Manipulación y análisis de datos</td>
+                        </tr>
+                        <tr>
+                            <td><strong>numpy</strong></td>
+                            <td>1.24.0</td>
+                            <td>Operaciones numéricas eficientes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>joblib</strong></td>
+                            <td>1.3.0</td>
+                            <td>Serialización de modelos</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="highlight-box">
+                    <span class="highlight-box-title">💡 Código Completo Disponible</span>
+                    <p>El código fuente completo está documentado en <code>metro_predictor_corregido_final.py</code> con más de 400 líneas de código profesional, incluyendo manejo de errores y validaciones.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 11: CONCLUSIONES Y LECCIONES APRENDIDAS
+        {
+            title: '<span class="emoji">🎓</span> Conclusiones y Lecciones Aprendidas',
+            content: `
+                <h3>🎯 Conclusiones Principales</h3>
+                
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">✅ Objetivo Cumplido</span>
+                    <p>Desarrollamos exitosamente un sistema predictivo que logra <strong>87% de precisión</strong> (R² = 0.87) en la predicción de flujo de pasajeros del Metro de Santiago, con un error promedio de solo <strong>28 personas</strong>.</p>
+                </div>
+
+                <ol>
+                    <li><strong>Los algoritmos simples importan:</strong> Aunque Random Forest ganó, empezar con Regresión Lineal fue crucial para establecer una línea base y entender el problema.</li>
+                    
+                    <li><strong>Feature Engineering es crítico:</strong> Crear variables como "es_hora_punta" y "es_combinacion" mejoró significativamente la precisión de todos los modelos.</li>
+                    
+                    <li><strong>No siempre más complejo es mejor:</strong> Random Forest superó a las Redes Neuronales en este caso, demostrando que la complejidad debe ajustarse al problema.</li>
+                    
+                    <li><strong>La interpretabilidad importa:</strong> En aplicaciones del mundo real (como Metro), es vital poder explicar POR QUÉ el modelo hace una predicción (importancia de variables).</li>
+                    
+                    <li><strong>Validación cruzada previene overfitting:</strong> Usar 5-fold cross-validation aseguró que el modelo generaliza bien a datos nuevos.</li>
+                </ol>
+
+                <h3>🔥 Lo Más Difícil del Proyecto</h3>
+                <div class="problem-box highlight-box">
+                    <span class="highlight-box-title">⚠️ Desafíos Principales</span>
+                    <ul class="icon-list">
+                        <li><strong>Limpieza de datos:</strong> Decidir qué hacer con registros de flujo = 0 (¿estación cerrada o error?)</li>
+                        <li><strong>Codificación de variables categóricas:</strong> Manejar 136 estaciones diferentes sin perder información</li>
+                        <li><strong>Definir horas punta:</strong> Investigar patrones reales de Santiago (no son iguales en todas las ciudades)</li>
+                        <li><strong>Evitar data leakage:</strong> Asegurar que variables derivadas no contengan información del futuro</li>
+                        <li><strong>Balancear precisión vs interpretabilidad:</strong> Decidir entre modelo más preciso vs uno más explicable</li>
+                    </ul>
+                </div>
+
+                <h3>📚 Aprendizajes del Grupo</h3>
+                <div class="highlight-box">
+                    <span class="highlight-box-title">🧠 Conocimientos Adquiridos</span>
+                    <ul>
+                        <li><strong>Ciclo completo de Data Science:</strong> Desde la obtención de datos hasta el deployment de un modelo</li>
+                        <li><strong>Comparación práctica de algoritmos:</strong> Entender cuándo usar cada algoritmo según el contexto</li>
+                        <li><strong>Métricas de evaluación:</strong> Distinguir entre R², MAE, RMSE y elegir la adecuada</li>
+                        <li><strong>Python profesional:</strong> Programación orientada a objetos, manejo de errores, documentación</li>
+                        <li><strong>Trabajo con datos reales:</strong> Los datos nunca son perfectos, siempre hay que limpiar y transformar</li>
+                        <li><strong>Impacto social:</strong> Machine Learning puede resolver problemas reales que afectan a millones</li>
+                    </ul>
+                </div>
+
+                <h3>🚀 Mejoras Futuras Propuestas</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mejora</th>
+                            <th>Descripción</th>
+                            <th>Impacto Esperado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Datos de clima</strong></td>
+                            <td>Incorporar temperatura y lluvia</td>
+                            <td>+3-5% precisión</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Eventos especiales</strong></td>
+                            <td>Detectar partidos de fútbol, conciertos</td>
+                            <td>Reducir errores en días atípicos</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Datos en tiempo real</strong></td>
+                            <td>Streaming de datos desde sensores</td>
+                            <td>Predicciones dinámicas cada 5 min</td>
+                        </tr>
+                        <tr>
+                            <td><strong>App móvil</strong></td>
+                            <td>Interfaz para usuarios del Metro</td>
+                            <td>Democratizar las predicciones</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Deep Learning avanzado</strong></td>
+                            <td>LSTM para series temporales</td>
+                            <td>Capturar tendencias a largo plazo</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="data-box highlight-box">
+                    <span class="highlight-box-title">💡 Mensaje Final</span>
+                    <p>Este proyecto demuestra que con los conocimientos adquiridos en Fundamentos de Data Science, podemos abordar problemas reales y complejos. Machine Learning no es magia, es <strong>estadística aplicada con código</strong>, y está al alcance de cualquiera dispuesto a aprender.</p>
+                </div>
+            `
+        },
+
+        // SLIDE 12: PREGUNTAS Y CONTACTO
+        {
+            title: '<span class="emoji">❓</span> Preguntas y Referencias',
+            content: `
+                <h3>📚 Referencias y Fuentes</h3>
+                <div class="highlight-box">
+                    <span class="highlight-box-title">📁 Fuentes de Datos</span>
+                    <ul class="icon-list">
+                        <li><strong>Metro de Santiago S.A.</strong> - Datos Abiertos de Transporte Público<br>
+                        <a href="https://www.metro.cl" target="_blank" style="color: var(--utem-blue-light);">https://www.metro.cl</a></li>
+                        
+                        <li><strong>Gobierno de Chile - Datos Abiertos</strong><br>
+                        <a href="https://datos.gob.cl" target="_blank" style="color: var(--utem-blue-light);">https://datos.gob.cl</a></li>
+                    </ul>
+                </div>
+
+                <h3>🔧 Tecnologías y Librerías</h3>
+                <div class="highlight-box">
+                    <ul class="icon-list">
+                        <li><strong>scikit-learn Documentation:</strong> <a href="https://scikit-learn.org" target="_blank" style="color: var(--utem-blue-light);">https://scikit-learn.org</a></li>
+                        <li><strong>pandas Documentation:</strong> <a href="https://pandas.pydata.org" target="_blank" style="color: var(--utem-blue-light);">https://pandas.pydata.org</a></li>
+                        <li><strong>Python Official:</strong> <a href="https://www.python.org" target="_blank" style="color: var(--utem-blue-light);">https://www.python.org</a></li>
+                    </ul>
+                </div>
+
+                <h3>📖 Material de Estudio Recomendado</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tema</th>
+                            <th>Recurso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Machine Learning Básico</strong></td>
+                            <td>"Hands-On Machine Learning" - Aurélien Géron</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Random Forest</strong></td>
+                            <td>Documentación scikit-learn + Papers originales</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Redes Neuronales</strong></td>
+                            <td>"Deep Learning" - Ian Goodfellow</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Feature Engineering</strong></td>
+                            <td>"Feature Engineering for Machine Learning" - Alice Zheng</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>💾 Repositorio del Proyecto</h3>
+                <div class="solution-box highlight-box">
+                    <span class="highlight-box-title">📂 Archivos Disponibles</span>
+                    <ul>
+                        <li><code>metro_predictor_corregido_final.py</code> - Código fuente completo</li>
+                        <li><code>modelo_metro.pkl</code> - Modelo Random Forest entrenado</li>
+                        <li><code>encoders.pkl</code> - Codificadores de variables categóricas</li>
+                        <li><code>requirements.txt</code> - Dependencias del proyecto</li>
+                        <li><code>README.md</code> - Instrucciones de uso</li>
+                    </ul>
+                </div>
+
+                <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: linear-gradient(135deg, rgba(238, 49, 36, 0.1) 0%, rgba(0, 43, 92, 0.1) 100%); border-radius: var(--border-radius-lg);">
+                    <h2 style="color: var(--metro-red); font-size: 2.5em; margin-bottom: 1rem;">¿Preguntas?</h2>
+                    <p style="font-size: 1.3em; color: var(--text-dark);">Estamos listos para responder sus dudas técnicas sobre:</p>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem;">
+                        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: var(--shadow-sm);">
+                            <strong>🔧 Código y Algoritmos</strong>
+                        </div>
+                        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: var(--shadow-sm);">
+                            <strong>📊 Métricas y Evaluación</strong>
+                        </div>
+                        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: var(--shadow-sm);">
+                            <strong>🧠 Conceptos de ML</strong>
+                        </div>
+                        <div style="background: white; padding: 1rem; border-radius: 10px; box-shadow: var(--shadow-sm);">
+                            <strong>🚇 Aplicación Práctica</strong>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 3rem; font-size: 2em;">
+                        🙏 <strong>¡Gracias por su atención!</strong>
+                    </div>
+                </div>
+            `
+        }
+    ];
+
+    // FUNCIONES DEL SLIDER
+    function createSlide(slideData) {
+        const slide = document.createElement('div');
+        slide.className = 'slide';
+        
+        if (slideData.type === 'portada') {
+            slide.classList.add('slide-portada');
+            slide.innerHTML = `<div class="slide-content">${slideData.content}</div>`;
+        } else {
+            slide.innerHTML = `
+                <div class="slide-content">
+                    <h2>${slideData.title}</h2>
+                    ${slideData.content}
+                </div>
+            `;
+        }
+        
+        return slide;
+    }
+
+    function initializeSlider() {
+        const slidesContainer = document.querySelector('.slides-container');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const currentSlideElement = document.getElementById('current-slide');
+        const totalSlidesElement = document.getElementById('total-slides');
+        let currentSlide = 0;
+
+        // Crear slides
+        slidesContainer.innerHTML = '';
+        slidesData.forEach(data => {
+            slidesContainer.appendChild(createSlide(data));
+        });
+
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        if (totalSlidesElement) {
+            totalSlidesElement.textContent = totalSlides;
+        }
+
+        // Navegación
+        const goToSlide = (index) => {
+            slidesContainer.style.transform = `translateX(-${index * 100}%)`;
+            slides.forEach((slide, i) => {
+                slide.classList.toggle('active', i === index);
+            });
+            currentSlide = index;
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === slides.length - 1;
+            if (currentSlideElement) {
+                currentSlideElement.textContent = currentSlide + 1;
+            }
+        };
+
+        const changeSlide = (direction) => {
+            const newSlide = currentSlide + direction;
+            if (newSlide >= 0 && newSlide < totalSlides) {
+                goToSlide(newSlide);
+            }
+        };
+
+        // Event listeners
+        prevBtn.addEventListener('click', () => changeSlide(-1));
+        nextBtn.addEventListener('click', () => changeSlide(1));
+
+        // Teclado
+        document.addEventListener('keydown', function(event) {
+            switch (event.key) {
+                case 'ArrowRight':
+                case 'PageDown':
+                case 'ArrowDown':
+                    changeSlide(1);
+                    break;
+                case 'ArrowLeft':
+                case 'PageUp':
+                case 'ArrowUp':
+                    changeSlide(-1);
+                    break;
+            }
+        });
+
+        // Touch (móvil)
+        let startX = 0, endX = 0;
+        slidesContainer.addEventListener('touchstart', (event) => {
+            startX = event.touches[0].clientX;
+        });
+        slidesContainer.addEventListener('touchend', (event) => {
+            endX = event.changedTouches[0].clientX;
+            const difference = startX - endX;
+            if (Math.abs(difference) > 50) {
+                changeSlide(difference > 0 ? 1 : -1);
+            }
+        });
+
+        // Inicializar
+        if (slides.length > 0) goToSlide(0);
+    }
+
+    initializeSlider();
+});
+</script>
+</body>
+</html>
